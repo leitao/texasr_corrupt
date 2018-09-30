@@ -1,13 +1,12 @@
 #!/bin/bash
 
 function check_texasr_in_coredump() {
-	TEXASR=$(eu-readelf --notes core | grep texasr | awk '{print $4}')
-
 	if [ ! -f "core" ]; then
 		echo "Coredump file not generated in this directory"
 		exit -1
 	fi
 
+	TEXASR=$(eu-readelf --notes core | grep texasr | awk '{print $4}')
 
 	if [ $TEXASR == "0x0000000000000007" ];
 	then
