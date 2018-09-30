@@ -8,7 +8,7 @@ function check_texasr_in_coredump() {
 
 	TEXASR=$(eu-readelf --notes core | grep texasr | awk '{print $4}')
 
-	if [ $TEXASR == "0x0000000000000007" ];
+	if [ "$TEXASR" == "0x0000000000000007" ];
 	then
 		echo Passed. TEXASR = $TEXASR
 	else
