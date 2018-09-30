@@ -6,7 +6,7 @@ function check_texasr_in_coredump() {
 		exit -1
 	fi
 
-	TEXASR=$(eu-readelf --notes core | grep texasr | awk '{print $4}')
+	TEXASR=$(eu-readelf --notes core | grep texasr | grep tfhar | awk '{print $4}')
 
 	if [ "$TEXASR" == "0x0000000000000007" ];
 	then
