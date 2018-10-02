@@ -1,4 +1,7 @@
 /*
+ * Copyright 2018, Breno Leitao, Gustavo Romero, IBM Corp.
+ * Licensed under GPLv2.
+ *
  * Test case that sets TEXASR TM SPR and sleeps, waiting kernel load_tm
  * to be zero. Then causes a segfault to generate core dump that will be
  * analyzed, in order to make sure the coredump was set properly.
@@ -29,6 +32,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include "utils.h"
 
 #define SPRN_TEXASR		0x82
 #define SPRN_TFIAR      	0x81
@@ -39,11 +43,6 @@
 #define COREDUMPFILE 		"core-tm-spr"
 #define COREDUMP(APPEND)	COREDUMPFILE#APPEND
 #define CORE_PATTERN_FILE 	"/proc/sys/kernel/core_pattern"
-
-#define __stringify(x)		#x
-#define mtspr(rn, v)		asm volatile("mtspr "__stringify(rn) ",%0" : \
-                                     : "r" ((unsigned long)(v)) \
-                                     : "memory")
 
 #define err_at_line(status, errnum, format, ...) \
         error_at_line(status, errnum,  __FILE__, __LINE__, format ##__VA_ARGS__)
@@ -244,6 +243,8 @@ int start_pong_thread() {
 		pr_err(rc, "pthread_create()");
 		return rc;
 	}
+
+	return 0;
 }
 
 
@@ -262,7 +263,7 @@ int start_main_thread(unsigned long t)
 	/* Change the name of the core dump file */
 	ret = write_core_pattern(COREDUMP(.%p), old_core_pattern);
 	if (ret) {
-		pr_err(ret, "Not able to generate core pattern");
+		pr_err(ret, "Not able to generate core pattern. Are you root!?");
 		return -1;
 	}
 
@@ -306,7 +307,7 @@ void open_coredump(struct coremem *c)
 
 	ret = stat(coredump, &buf);
 	if (ret == -1) {
-		printf("Coredump %s does not exists\n");
+		printf("Coredump does not exists\n");
 		return;
 	}
 	core_size = buf.st_size;
@@ -341,7 +342,8 @@ void parse_elf(Elf64_Ehdr *ehdr, struct tm_sprs *ret){
 	assert(ehdr->e_machine == EM_PPC64);
 	assert(ehdr->e_phoff != 0 || ehdr->e_phnum != 0);
 
-	wphdr_size = sizeof(*phdr) * ehdr->e_phnum;
+	phdr_size = sizeof(*phdr) * ehdr->e_phnum;
+
 	for (phdr = p + ehdr->e_phoff;
 	     (void *) phdr < p + ehdr->e_phoff + phdr_size;
 	      phdr += ehdr->e_phentsize)
@@ -369,7 +371,7 @@ void parse_elf(Elf64_Ehdr *ehdr, struct tm_sprs *ret){
 
 int check_return_value(struct tm_sprs *s)
 {
-	if ((s->texasr = texasr) &&
+	if ((s->texasr == texasr) &&
 	    (s->tfiar == tfiar) &&
 	    (s->tfhar == tfhar)) {
 		return 0;
@@ -396,11 +398,11 @@ int clear_coredump()
 	return ret;
 }
 
-int main(int argc, char *argv[]){
+int tm_core_test()
+{
 	/* Default time that causes the crash on P8/pseries */
 	unsigned long time = 0x00d0000000;
 	int ret;
-	char *endptr;
 	struct tm_sprs sprs;
 	struct coremem mem;
 
@@ -436,4 +438,9 @@ out:
 	/* unmap memory allocated in open_coredump() */
 	munmap(mem.p, mem.len);
 	return ret;
+}
+
+int main(int argc, char **argv)
+{
+        return test_harness(tm_core_test, "tm_core_test");
 }
