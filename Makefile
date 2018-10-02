@@ -8,4 +8,4 @@ check: test
 	bash -c "./run.sh"
 
 clean:
-	rm core test.o test
+	rm core-tm-spr.* test.o test
