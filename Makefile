@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I.
+CFLAGS=-I. -g
 
 test: test.o
 	$(CC) -o test test.o -lpthread
